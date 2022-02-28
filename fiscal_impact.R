@@ -44,6 +44,22 @@ overrides <- readxl::read_xlsx('data/forecast.xlsx',
 current_quarter <- overrides %>% slice_max(date) %>% pull(date) # Save current quarter for later
 
 # Load national accounts data from BEA
+
+projections <- get_cbo_projections()
+
+fim::national_accounts %>%
+  coalesce_join(projections, by = 'date') %>% 
+  as_tsibble(key = id, index = date) %>% 
+  mutate(across(.cols = c(real_gdp, consumption_grants_deflator,
+                          investment_grants_deflator),
+                .fns = ~q_g(.x),
+                .names = '{.col}_growth'),
+         across(.cols = c('wages_lost_assistance', 'ui_expansion','peuc', 'pua', 'puc',  'wages_lost_assistance', 'rebate_checks', 'nonprofit_ppp',
+                          'nonprofit_provider_relief_fund','coronavirus_relief_fund', 'education_stabilization_fund',
+                          'provider_relief_fund' ),
+                .fns = ~coalesce(.x, 0)),
+         federal_ui = ui_expansion  + wages_lost_assistance)
+
 usna <-
   read_data() %>% # Load raw BEA data from Haver and CBO projections
   define_variables() %>%  # Rename Haver codes for clarity
