@@ -103,7 +103,8 @@ usecon <-
 
 cpi <- 
   pull_data(c('UI'), 'cpidata', start.date = START) %>%
-  monthly_to_quarterly()
+  monthly_to_quarterly() %>% 
+  rename(cpiu = ui)
 
 
 # Wages Lost Assistance Program (Monthly)
@@ -133,7 +134,7 @@ usna <-
   mutate(gftffx = gftffx / 1e3) %>% 
   left_join(ctc, by = 'date')
 
-
+usethis::use_data(usna)
 
 
 monthly_state_ui <- c('LICL', 'LWCL', 'LUFP','LULP','LUWC','LUWP','LUBP','LUWB','LUEX','LUD','LUWBY', 'LUBPT', 'LUFPT', 'LULPT')
@@ -160,17 +161,21 @@ list(data = haver_raw_list,
      names = names(haver_raw_list)) %>% 
   purrr::pmap(output_xlsx) 
 
- # df = usna
- # 
- #  df %>%
- #   set_names(
- #     names_usna %>% 
- #       pull(reference) %>% 
- #       magrittr::extract(
- #         names(df) %>% 
- #           match(names_usna$code)
- #       )
- #   )
+  df = usna
+ 
+   df %>%
+    set_names(
+      names_usna %>%
+        pull(reference) %>%
+        magrittr::extract(
+          names(df) %>%
+            match(names_usna$code)
+        )
+    ) %>% names() 
+     mutate(id = 'historical',
+            # Millions to billions
+            across(c(health_grants, medicaid_grants, investment_grants),
+                   ~ .x / 1000))
 
 
 
