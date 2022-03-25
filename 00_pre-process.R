@@ -18,6 +18,7 @@ START <- "01-01-1970"
 names_usna <- 
   tibble::tribble(
     ~code,                        ~reference,
+    'date', 'date',
     "gdp",                             "gdp",
     "gdph",                        "real_gdp",
     "jgdp",                    "gdp_deflator",
@@ -38,7 +39,7 @@ names_usna <-
     "yctlg",                 "corporate_taxes",
     "g",                       "purchases",
     "grcsi",          "paymentSocialInsurance",
-    "dc",            "consumption_deflator",
+    "dc",            "dc",
     "gf",               "federal_purchases",
     "gs",                 "state_purchases",
     "gfh",          "real_federal_purchases",
@@ -90,7 +91,16 @@ names_usna <-
     "ycpd",               "corporate_profits",
     "gfsubr",  "restaurant_revitalization_fund",
     "gfsubd",                  "disaster_loans",
-    "gftfbdx",                 "social_security"
+    "gftfbdx",                 "social_security",
+    "cpiu", "cpiu",
+    "pcw", "pcw",
+    "gdppothq", "real_potential_gdp",
+    "gdppotq", "potential_gdp",
+    "recessq", "recessq",
+    "lasgova", "lasgova",
+    "lalgova", "lalgova",
+    "cpgs", "cpgs",
+    "yptocm", "yptocm"
   )
 
 # Economic Statistics
@@ -134,44 +144,34 @@ usna <-
   mutate(gftffx = gftffx / 1e3) %>% 
   left_join(ctc, by = 'date')
 
-usethis::use_data(usna)
-
-
-monthly_state_ui <- c('LICL', 'LWCL', 'LUFP','LULP','LUWC','LUWP','LUBP','LUWB','LUEX','LUD','LUWBY', 'LUBPT', 'LUFPT', 'LULPT')
-
-state_ui <- pull_data(monthly_state_ui,
-                         'usecon',
-                         start.date = START) %>%
-  as_tibble() %>%
-  write_xlsx('data/monthly_state_ui.xlsx')
-# Write csv to current month's folder
-haver_raw_list <- 
-  list(national_accounts = usna,
-       economic_statistics = usecon)
-
-
-## Exporting csv with the desired file names and into the right path
-output_xlsx <- function(data, names){ 
-  folder_path <- "inst/extdata/"
-  write_xlsx(data, paste0(folder_path, names, ".xlsx"))
-}
-
-
-list(data = haver_raw_list,
-     names = names(haver_raw_list)) %>% 
-  purrr::pmap(output_xlsx) 
-
-  df = usna
- 
-   df %>%
+fim::usna
+usna <- 
+   fim::usna %>%
     set_names(
-      names_usna %>%
-        pull(reference) %>%
+      names_usna$reference %>%
         magrittr::extract(
-          names(df) %>%
+          names(fim::usna) %>%
             match(names_usna$code)
         )
-    ) %>% names() 
+    ) 
+
+df <- fim::projections %>% 
+  cola_adjustment() %>%
+  smooth_budget_series() %>%
+  implicit_price_deflators() %>%
+  growth_rates() %>%
+  alternative_tax_scenario() %>%
+  format_tsibble() %>% 
+  select(id, date, gdp, gdph, gdppothq, gdppotq, starts_with('j'), dc, c, ch ,ends_with('growth'), cpiu, federal_ui, state_ui, unemployment_rate) 
+
+new_names <- names_usna %>% 
+  pivot_wider(names_from = reference,
+              values_from = code) 
+df %>% 
+  rename(!!!new_names)
+
+
+usna %>% 
      mutate(id = 'historical',
             # Millions to billions
             across(c(health_grants, medicaid_grants, investment_grants),
@@ -184,19 +184,10 @@ national_accounts <-
   usna %>% 
   mutate(id = 'historical') %>%
   millions_to_billions() %>%
-  rename(cpiu = ui,
-         
-  ) %>% 
-  # mutate(jgdp = gdp / gdph,
-  #        jc = c  / ch,
-  #        jgf = gf /gfh,
-  #        jgs = gs/  gsh,
-  #        jgse =  jgse / 100,
-  #        jgsi = jgsi / 100) %>%
-  mutate(across(starts_with('j'), ~ q_g(.x), .names = '{.col}_growth')) %>% 
+  mutate(across(ends_with('deflator'), ~ q_g(.x), .names = '{.col}_growth')) %>% 
   format_tsibble() %>% 
   #When adding new codes to read in from Haver, make sure to relocate them at the end of the spreadsheet using the below function:
-  relocate(ylwsd:gftfbdx, .after = 'jgsi_growth') %>% 
+  relocate(wages_and_salaries:social_security, .after = 'investment_grants_deflator_growth') %>% 
   relocate(yptocm, .after = everything())
 
 usethis::use_data(national_accounts, overwrite = TRUE)
@@ -227,7 +218,7 @@ recessions <-
     .keep = 'used') %>% 
   filter(business_cycle == 'recession_start' | business_cycle == 'recession_end') %>% 
   pivot_longer(business_cycle) %>% 
-  mutate(date2 = as_date(date)) %>%
+  mutate(date2 = lubridate::as_date(date)) %>%
   pivot_wider(names_from = value, 
               values_from = date) %>% 
   select(recession_start, recession_end) %>% 

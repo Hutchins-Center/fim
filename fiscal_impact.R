@@ -47,7 +47,10 @@ current_quarter <- overrides %>% slice_max(date) %>% pull(date) # Save current q
 
 projections <- get_cbo_projections()
 
-fim::national_accounts %>%
+
+
+usna <-
+  fim::national_accounts %>%
   coalesce_join(projections, by = 'date') %>% 
   as_tsibble(key = id, index = date) %>% 
   mutate(across(.cols = c(real_gdp, consumption_grants_deflator,
@@ -58,12 +61,7 @@ fim::national_accounts %>%
                           'nonprofit_provider_relief_fund','coronavirus_relief_fund', 'education_stabilization_fund',
                           'provider_relief_fund' ),
                 .fns = ~coalesce(.x, 0)),
-         federal_ui = ui_expansion  + wages_lost_assistance)
-
-usna <-
-  read_data() %>% # Load raw BEA data from Haver and CBO projections
-  define_variables() %>%  # Rename Haver codes for clarity
-  as_tsibble(key = id, index = date) %>% # Specify time series structure
+         federal_ui = ui_expansion  + wages_lost_assistance) %>% 
   mutate_where(id == 'historical',  # Calculate GDP growth for data but take CBO for projection
                real_potential_gdp_growth = q_g(real_potential_gdp)) %>% 
   mutate( 
