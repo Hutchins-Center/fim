@@ -5,7 +5,8 @@ library("magrittr")
 library('lubridate')
 library("tidyverse")
 national_accounts <- 
-  
+  #pulls from national_accounts excel sheet
+  ##Is this created in 00_pre_process?
   readxl::read_xlsx('inst/extdata/national_accounts.xlsx') %>% 
   mutate(id = 'historical') %>%
   millions_to_billions() %>%

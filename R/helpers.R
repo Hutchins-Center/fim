@@ -9,12 +9,12 @@
 #' @examples
 format_tsibble <- function(df){
   df %>%
-    mutate(date = tsibble::yearquarter(date)) %>%
+    mutate(date = tsibble::yearquarter(date)) %>%#formatting date
     relocate(id, .before = date) %>%
-    tsibble::as_tsibble(key = id, index = date)
+    tsibble::as_tsibble(key = id, index = date)#setting data as time series (id = historical and projection, date = quarter year)
 }
 
-annual_to_quarter <- function(df){
+annual_to_quarter <- function(df){ ##Question: could we go over this function? 
   year <-
     df %>%
       tsibble::index_var()

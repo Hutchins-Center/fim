@@ -1,15 +1,23 @@
 # Setup -------------------------------------------------------------------
-Sys.setenv(TZ = 'UTC')
+Sys.setenv(TZ = 'UTC') 
+
+#librarian::shelf allows you to install and load packages from CRAN and github 
 librarian::shelf(tidyverse, tsibble, lubridate, glue, TimTeaFan/dplyover, zoo, TTR, fs, gt, openxlsx, 
                  snakecase, rlang)
+
+#makes the functions in the fim package accessible
 devtools::load_all()
 
 options(digits = 4) # Limit number of digits
 options(scipen = 20)# Turn off scientific notation under 20 digits 
 
-# Set dates for current and previous months
+# Set dates for current update
+#Note: we take away 7 to stay in the proper month in the event of a late BEA release 
 month_year <- glue('{format.Date(today() - 7, "%m")}-{year(today())}')
 
+
+##standardize the month number to two digits to preserve the order of folders ?(not sure)
+#Note: the year for the previous month has to be adjusted for the case that it was in prev calendar year 
 if(month(today() - 7 
          -months(1)) < 10){
   last_month_year <- glue('0{month(today() - 7 -months(1))}-{year(today() - dmonths(1) - dweeks(1))}')
@@ -20,11 +28,14 @@ if(month(today() - 7
 
 # Create updatglibe folders
 
+#this is set to TRUE when we have data for a new quarter 
 update_in_progress <- FALSE
 
 if(update_in_progress == TRUE){
   dir_create(glue('results/{month_year}')) # Create folder to gitstore results
   dir_create(glue('results/{month_year}/input_data')) # Folder to store forecast from current update
+  
+  ##copies the current forecast sheet to the new folder ?(not sure)
   file_copy(path = 'data/forecast.xlsx', new_path = glue('results/{month_year}/input_data/forecast_{month_year}.xlsx'), overwrite = TRUE)
 }
 
@@ -34,18 +45,27 @@ if(update_in_progress == TRUE){
 # Since BEA put all CARES act grants to S&L in Q2 2020 we need to
 # override the historical data and spread it out based on our best guess
 # for when the money was spent.
+
+
+# Read in overrides-----
 overrides <- readxl::read_xlsx('data/forecast.xlsx',
-                               sheet = 'historical overrides') %>% # Read in overrides
-  select(-name) %>% # Remove longer name since we don't need it
+                               sheet = 'historical overrides') %>% 
+  # Remove longer name since we don't need it
+  select(-name) %>% 
+  
+  #Reshape so that variables are columns and dates are rows
   pivot_longer(-variable,
-               names_to = 'date') %>% # Reshape so that variables are columns and dates are rows
+               names_to = 'date') %>% 
   pivot_wider(names_from = 'variable',
               values_from = 'value') %>% 
+  
+  #Set date to year,quarter format
   mutate(date = yearquarter(date))
 
-current_quarter <- overrides %>% slice_max(date) %>% pull(date) # Save current quarter for later
+# Save current quarter for later
+current_quarter <- overrides %>% slice_max(date) %>% pull(date) 
 
-# Load national accounts data from BEA
+# Load national accounts data from BEA-----
 usna <-
   read_data() %>% # Load raw BEA data from Haver and CBO projections
   define_variables() %>%  # Rename Haver codes for clarity

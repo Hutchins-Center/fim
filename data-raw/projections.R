@@ -1,19 +1,23 @@
 ## code to prepare `projections` dataset goes here
 librarian::shelf(tidyverse, tsibble)
-economic_projections <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet = 'economic') %>% 
+##Question: where does the data in these sheets come from?
+
+economic_projections <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet = 'economic') %>% #Reading in data from the CBO economic projection (##Question: they have haver codes?)
   mutate(date = tsibble::yearquarter(date)) %>%
   as_tsibble(index = date)
 
 budget_projections <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet = 'budget') %>% 
-  as_tsibble(index = fy) %>%
-  annual_to_quarter() %>%
-  fiscal_to_calendar() %>% 
-  mutate(federal_ui_timing = case_when(date <= yearquarter('2020 Q4') ~ 0,
+  as_tsibble(index = fy) %>% #declaring the time series
+  annual_to_quarter() %>%#expanding each year's data into 4 quarters 
+  fiscal_to_calendar() %>% #changing fiscal year to calendar year (Q1 2019 -> Q3 2018, Q2 2019 -> Q4 2018, Q3 2019-> Q1 2019, Q4 2019-> Q2 2019)
+ 
+ ##Not sure what's going on here -- could we go over timing in general?
+   mutate(federal_ui_timing = case_when(date <= yearquarter('2020 Q4') ~ 0,
                                        date == yearquarter('2021 Q1') ~ 0.725,
                                        date == yearquarter('2021 Q2') ~ 0.275,
                                        date == yearquarter('2021 Q3') ~ 0,
                                        TRUE ~  1),
-         federal_ui = yptu - state_ui,
+         federal_ui = yptu - state_ui,#creating FIM consistent definition of federal ui
          federal_ui = if_else(date >= yearquarter('2020 Q4') & date <= yearquarter('2021 Q3'),
                               4 * federal_ui_timing * federal_ui,
                               federal_ui))
@@ -73,6 +77,7 @@ budget_projections <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet =
 #                 .names = '{.col}_growth'), .after = 'state_medicaid') %>% 
 #   openxlsx::write.xlsx('medicaid_projections.xlsx')
 
+#Creating cares specific social benefits and subsidies
 cares <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet = 'CARES') %>% 
   summarize(date, cares_other_federal_social_benefits = nonprofit_ppp + nonprofit_provider_relief_fund,
             cares_other_subsidies = provider_relief_fund)
@@ -101,7 +106,7 @@ crrca <- readxl::read_xlsx('inst/extdata/projections.xlsx', sheet = 'crrca') %>%
 
           
 
-
+#Creates the projections dataframe using CBO budget and economic projections 
 projections <- 
   budget_projections %>% 
   left_join(economic_projections, by = 'date') %>% 

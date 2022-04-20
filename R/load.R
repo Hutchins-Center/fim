@@ -2,14 +2,16 @@
 
 
 get_cbo_projections <- function(){
-  fim::projections %>% 
-    cola_adjustment() %>%
-    smooth_budget_series() %>%
-    implicit_price_deflators() %>%
-    growth_rates() %>%
-    alternative_tax_scenario() %>%
-    format_tsibble() %>% 
+
+  fim::projections %>% #created using projections.R script that reads in from CBO projections spreadsheet
+    cola_adjustment() %>% #inflation adjusts health spending and ui in federal social benefits, smooths the series
+    smooth_budget_series() %>% #smooths federal taxes, health outlays, and ui
+    implicit_price_deflators() %>%#computes deflators for federal and state purchases and consumption
+    growth_rates() %>%#computes qoq growth rates of the levels 
+    alternative_tax_scenario() %>% #keeps the current law tax growth for federal personal income taxes post-2025
+    format_tsibble() %>% #declares data as time series as with id and time variable
     select(id, date, gdp, gdph, gdppothq, gdppotq, starts_with('j'), dc, c, ch ,ends_with('growth'), cpiu, federal_ui, state_ui, unemployment_rate)
+      #keeps the relevant variables
 }
 
 safe_quarter  <- function(df){
@@ -31,11 +33,13 @@ undo_safe_quarter <- function(df){
 #' @examples
 read_data <- function(){
 
-  projections <- get_cbo_projections()
+ 
+  projections <- get_cbo_projections()#cleans the CBO projection data from projections.R and creates the projections data frame   
   
+  #Historical data from Haver created in national_accounts.R
   fim::national_accounts %>%
-    coalesce_join(projections, by = 'date') %>% 
-    as_tsibble(key = id, index = date)
+    coalesce_join(projections, by = 'date') %>% #joining projections using date variable
+    as_tsibble(key = id, index = date)#declaring time series with id and date that now has historical and projection 
 }
 
 
