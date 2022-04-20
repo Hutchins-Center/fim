@@ -1,6 +1,8 @@
 # Setup -------------------------------------------------------------------
 Sys.setenv(TZ = 'UTC') 
 
+#Note: restart session often. Ctrl+Shift+F10
+
 #librarian::shelf allows you to install and load packages from CRAN and github 
 librarian::shelf(tidyverse, tsibble, lubridate, glue, TimTeaFan/dplyover, zoo, TTR, fs, gt, openxlsx, 
                  snakecase, rlang)
@@ -35,7 +37,7 @@ if(update_in_progress == TRUE){
   dir_create(glue('results/{month_year}')) # Create folder to gitstore results
   dir_create(glue('results/{month_year}/input_data')) # Folder to store forecast from current update
   
-  ##copies the current forecast sheet to the new folder ?(not sure)
+  #copies the current forecast sheet to the new folder
   file_copy(path = 'data/forecast.xlsx', new_path = glue('results/{month_year}/input_data/forecast_{month_year}.xlsx'), overwrite = TRUE)
 }
 
@@ -80,13 +82,15 @@ usna <-
     social_benefits = federal_social_benefits + state_social_benefits,
     consumption_grants = gross_consumption_grants - medicaid_grants,
   ) %>% 
-  mutate(rebate_checks_arp = if_else(date == yearquarter("2021 Q1"),
+  mutate(rebate_checks_arp = if_else(date == yearquarter("2021 Q1"), #hardcoding arp rebate checks for one period
                                      1348.1,
                                      0)) %>%
   mutate_where(id == 'projection',
                rebate_checks_arp = NA,
                federal_ui = NA,
-               state_ui = NA) %>% 
+               state_ui = NA) %>%
+  
+  ##Adjusting data in 2021 because of arp(?)
   mutate_where(date == yearquarter('2021 Q1'),
                rebate_checks = rebate_checks - rebate_checks_arp,
                federal_social_benefits = federal_social_benefits + 203
@@ -94,23 +98,27 @@ usna <-
   mutate_where(date == yearquarter("2021 Q4"),
                rebate_checks_arp = 14.2,
                rebate_checks = 0) %>% 
-
   mutate(consumption_grants = gross_consumption_grants - medicaid_grants,
          
          # Aggregate taxes
          corporate_taxes = federal_corporate_taxes + state_corporate_taxes,
          non_corporate_taxes = federal_non_corporate_taxes + state_non_corporate_taxes) %>% 
-  mutate_where(id == 'projection',
+
+  ##Why are these set equal to state purchases deflator growth
+   mutate_where(id == 'projection',
                consumption_grants_deflator_growth = state_purchases_deflator_growth,
                investment_grants_deflator_growth = state_purchases_deflator_growth) %>% 
+  #Overriding historical consumption grant 
   mutate_where(date >= yearquarter('2020 Q2') & date <= current_quarter,
                consumption_grants = overrides$consumption_grants_override) 
 # Forecast ----------------------------------------------------------------
 forecast <- # Read in sheet with our forecasted values
   readxl::read_xlsx('data/forecast.xlsx',
                     sheet = 'forecast') %>% 
-  select(-name) %>% 
-  pivot_longer(-variable,
+  select(-name) %>% #dropping long name because it isn't relevant 
+ 
+  #reshaping data to column variables, date rows 
+   pivot_longer(-variable,
                names_to = 'date') %>% 
   pivot_wider(names_from = 'variable',
               values_from = 'value') %>% 
@@ -118,22 +126,25 @@ forecast <- # Read in sheet with our forecasted values
 
 
 projections <- # Merge forecast w BEA + CBO
-  coalesce_join(usna, forecast, by = 'date') %>% 
+  coalesce_join(usna, forecast, by = 'date') %>% #fills in the missing obs of usna variables with forecast obs
   mutate(# Coalesce NA's to 0
-    across(where(is.numeric),
+    across(where(is.numeric),#mutates across any variables that is a number 
            ~ coalesce(.x, 0))) %>%
   mutate(
     health_outlays = medicare + medicaid,
+    #reassigning medicaid grants to fed from state
     federal_health_outlays = medicare + medicaid_grants,
     state_health_outlays = medicaid - medicaid_grants
   ) %>% 
+  #Applying historical overrides 
+  ##Question: why do we do consumption grants separately in line 112?
   mutate_where(date >= yearquarter('2020 Q2') & date <= current_quarter,
                federal_other_direct_aid_arp = overrides$federal_other_direct_aid_arp_override,
                federal_other_vulnerable_arp = overrides$federal_other_vulnerable_arp_override,
                federal_social_benefits = overrides$federal_social_benefits_override,
                federal_aid_to_small_businesses_arp = overrides$federal_aid_to_small_businesses_arp_override) %>% 
   mutate_where(date == yearquarter("2021 Q1"),
-               federal_social_benefits = federal_social_benefits + 203) %>% 
+               federal_social_benefits = federal_social_benefits + 203) %>% ##didn't we already do this to usna on line 96? 
   # FIXME: Figure out why wrong number was pulled from Haver (like 400)
   mutate_where(date == yearquarter('2021 Q4'),
                federal_ui = 11, 
@@ -162,7 +173,7 @@ consumption <- # Compute consumption out of transfers (apply MPC's)
         "rebate_checks_arp",
         "federal_other_direct_aid_arp",
         "federal_other_vulnerable_arp",
-        # "federal_ui_arp",
+        #"federal_ui_arp",
         #"state_ui_arp",
         "federal_aid_to_small_businesses_arp"
       )
@@ -172,7 +183,7 @@ consumption <- # Compute consumption out of transfers (apply MPC's)
   )) %>% 
   mutate(
     across(
-      .cols = all_of(
+      .cols = any_of(
         c("federal_ui_arp", "state_ui_arp", "federal_other_vulnerable_arp") %>% paste0("_minus_neutral")
       ),
       .fns = ~ mpc_vulnerable_arp(.x),

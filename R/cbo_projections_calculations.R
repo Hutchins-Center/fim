@@ -11,12 +11,12 @@ cola_adjustment <- function(df){
 
   get_cola_rate <- function(df){
     df %>%
-      mutate(cpiu_g = fim::q_a(cpiu) / 100, #cpiu_g = quarterly annualized growth rate of cpiu
+      mutate(cpiu_g = fim::q_a(cpiu) / 100, #cpiu_g = quarterly annualized growth rate of cpiu (urban cpi)
              cola_rate = if_else(lubridate::quarter(date) == 1,
                                  lag(cpiu_g, 2),# cola_rate= takes the cpiu_g from q3 of previous year and gives to the q1 
                                  NULL)) %>%
       tidyr::fill(cola_rate)#carries forward the cola_rate from q1 to the rest of the year 
-    ##Question: why do we carry forward the cola_rate this way?
+    ##smooths out CBO adjustment in q1 
   }
   smooth_transfers_net_health_ui <- function(df){
     df %>%
@@ -31,7 +31,6 @@ cola_adjustment <- function(df){
 #applying the two functions to the data frame 
   df %>%
     get_cola_rate() %>%
-    ##Question: why is this called net health ui if we add it back
     smooth_transfers_net_health_ui()
   
 }
@@ -46,7 +45,7 @@ cola_adjustment <- function(df){
 #'
 #' @examples
   alternative_tax_scenario <- function(df){
-    # Construct alternative scenario for personal current taxes, under which the TCJA provisions for income taxes don't
+    # Construct alternative scenario from CBO for personal current taxes, under which the TCJA provisions for income taxes don't
     # expire in 2025
     expdate <- tsibble::yearquarter('2025 Q3')
     
@@ -60,7 +59,7 @@ cola_adjustment <- function(df){
                        missing = NULL
                ),
              gfrpt  = if_else(date >= expdate,
-                              lag(gfrpt) * (1 + gfrpt_growth / 400),##Question: could we go over this calculation?
+                              lag(gfrpt) * (1 + gfrpt_growth / 400),#for deannualizing the numerator 
                               gfrpt))
   }
 #' Implicit price deflators
@@ -168,5 +167,5 @@ smooth_budget_series <- function(df) {
   df %>%
     #taking the average of the 4 preceding periods within each column (same as simple moving average)
     mutate(across(all_of(c(federal_taxes, health_outlays, unemployment_insurance)),
-                  ~ zoo::rollapply(.x, width = 4, mean, fill = NA,min_obs = 1, align = 'right')))##Question: what does align do?
+                  ~ zoo::rollapply(.x, width = 4, mean, fill = NA,min_obs = 1, align = 'right')))#align takes the preceding 4, ~means custom fxn
 }

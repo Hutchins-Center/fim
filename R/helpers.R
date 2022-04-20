@@ -14,7 +14,7 @@ format_tsibble <- function(df){
     tsibble::as_tsibble(key = id, index = date)#setting data as time series (id = historical and projection, date = quarter year)
 }
 
-annual_to_quarter <- function(df){ ##Question: could we go over this function? 
+annual_to_quarter <- function(df){ 
   year <-
     df %>%
       tsibble::index_var()
@@ -29,23 +29,25 @@ annual_to_quarter <- function(df){ ##Question: could we go over this function?
     max()
   start <- tsibble::yearquarter(glue::glue('{min} Q1'))
   end <- tsibble::yearquarter(glue::glue('{max} Q4'))
-  x <- seq(start,  end, by = 1)
+  x <- seq(start,  end, by = 1)#creates vector for time variable
   
   df %>%
     as_tibble() %>%
-    slice(rep(1:n(), each=4)) %>%
-    mutate(date = tsibble::yearquarter(x, fiscal_start =  1)) %>%
+    slice(rep(1:n(), each=4)) %>%#takes each row and repeats it 4 times
+    mutate(date = tsibble::yearquarter(x, fiscal_start =  1)) %>%#fiscal_start option for yearquarter converts to calendar year
     relocate(date, .before =  everything()) %>%
     tsibble::as_tsibble(index = date)
 }
+
+ 
 
 fiscal_to_calendar <- function(df){
   index <-
     df %>%
     index_var()  
-  index <- rlang::ensym(index)
+  index <- rlang::ensym(index)#allows you to be general with your index var
   df %>%
-    mutate("{{index}}" := {{index}} - 1)
+    mutate("{{index}}" := {{index}} - 1)#special assignment bc this is a fxn, look into it in meta programming 
     
 }  
 

@@ -4,6 +4,8 @@
 get_cbo_projections <- function(){
 
   fim::projections %>% #created using projections.R script that reads in from CBO projections spreadsheet
+    #TODO: rename to cbo_projections
+    
     cola_adjustment() %>% #inflation adjusts health spending and ui in federal social benefits, smooths the series
     smooth_budget_series() %>% #smooths federal taxes, health outlays, and ui
     implicit_price_deflators() %>%#computes deflators for federal and state purchases and consumption
@@ -34,7 +36,8 @@ undo_safe_quarter <- function(df){
 read_data <- function(){
 
  
-  projections <- get_cbo_projections()#cleans the CBO projection data from projections.R and creates the projections data frame   
+  projections <- get_cbo_projections()#cleans the CBO projection data from projections.R and creates the projections data frame 
+
   
   #Historical data from Haver created in national_accounts.R
   fim::national_accounts %>%

@@ -1,7 +1,7 @@
 
 define_variables <- function(df){
   df %>%
-    transmute(date,
+    transmute(date, #the transmute function is the same as mutate but it replaces the original variables 
               id,
               gdp = gdp,
               gdp_growth,
@@ -83,7 +83,7 @@ define_variables <- function(df){
               across(c('peuc', 'pua', 'puc',  'wages_lost_assistance', 'rebate_checks', 'nonprofit_ppp',
                        'nonprofit_provider_relief_fund','coronavirus_relief_fund', 'education_stabilization_fund',
                        'provider_relief_fund'),
-                     ~ coalesce(.x, 0)),
+                     ~ coalesce(.x, 0)), #replacing missings to 0 for each of these variables
               
               # Taxes
               personal_taxes = yptx,
