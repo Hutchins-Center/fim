@@ -170,36 +170,36 @@ get_real_levels<- function(df){
 }
 
 
-
-annualize_deflator<- function(df){
-  deflators = all_levels('consumption_deflator_growth', 
-                     'federal_purchases_deflator_growth',
-                     'state_purchases_deflator_growth',
-                     'consumption_grants_deflator_growth',
-                     'investment_grants_deflator_growth')
-                  
-  df %>%
-    dplyr::mutate(
-      dplyr::across(.cols = any_of(all_levels(deflators)),
-                    .fns = ~( (.)+1)^4 - 1,
-                    .names = '{.col}_ann')
-    )
-}
-
-deannualize_deflator<- function(df){
-  deflators = all_levels('consumption_deflator_growth_ann', 
-                         'federal_purchases_deflator_growth_ann',
-                         'state_purchases_deflator_growth_ann',
-                         'consumption_grants_deflator_growth_ann',
-                         'investment_grants_deflator_growth_ann')
-  
-  df %>%
-    dplyr::mutate(
-      dplyr::across(.cols = any_of(all_levels(deflators)),
-                    .fns = ~( (.)+1)^.25 - 1,
-                    .names = '{.col}'),
-    ) 
-}
+# 
+# annualize_deflator<- function(df){
+#   deflators = all_levels('consumption_deflator_growth', 
+#                      'federal_purchases_deflator_growth',
+#                      'state_purchases_deflator_growth',
+#                      'consumption_grants_deflator_growth',
+#                      'investment_grants_deflator_growth')
+#                   
+#   df %>%
+#     dplyr::mutate(
+#       dplyr::across(.cols = any_of(all_levels(deflators)),
+#                     .fns = ~( (.)+1)^4 - 1,
+#                     .names = '{.col}_ann')
+#     )
+# }
+# 
+# deannualize_deflator<- function(df){
+#   deflators = all_levels('consumption_deflator_growth_ann', 
+#                          'federal_purchases_deflator_growth_ann',
+#                          'state_purchases_deflator_growth_ann',
+#                          'consumption_grants_deflator_growth_ann',
+#                          'investment_grants_deflator_growth_ann')
+#   
+#   df %>%
+#     dplyr::mutate(
+#       dplyr::across(.cols = any_of(all_levels(deflators)),
+#                     .fns = ~( (.)+1)^.25 - 1,
+#                     .names = '{.col}'),
+#     ) 
+# }
 
 
 

@@ -18,7 +18,7 @@ diff_plot <-
   #geom_col(position=position_dodge2(reverse = TRUE)) +
   geom_line(show.legend = FALSE) +
   geom_point(show.legend = FALSE) +
-  facet_wrap(variable~.) +
+  facet_grid(rows = vars(variable)) +
   scale_y_continuous(labels = scales::label_percent()) +
   
   labs(title = 'Difference in deflator growth', 
@@ -33,7 +33,8 @@ cur_plot <-
   #geom_col(position=position_dodge2(reverse = TRUE)) +
   geom_line(show.legend = FALSE) +
   geom_point(show.legend = FALSE) +
-  facet_wrap(variable~.) +
+  #facet_wrap(variable~.) +
+  facet_grid(rows = vars(variable))+
   scale_y_continuous(labels = scales::label_percent()) +
   geom_hline(yintercept = 0) +
   labs(title = 'Current deflator growth', 
@@ -48,7 +49,8 @@ prev_plot <-
   #geom_col(position=position_dodge2(reverse = TRUE)) +
   geom_line(show.legend = FALSE) +
   geom_point(show.legend = FALSE) +
-  facet_wrap(variable~.) +
+ # facet_wrap(variable~.) +
+  facet_grid(rows = vars(variable))
   scale_y_continuous(labels = scales::label_percent()) +
   geom_hline(yintercept = 0) +
   labs(title = 'Previous deflator growth', 
